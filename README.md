@@ -117,4 +117,101 @@ in API group "project.openshift.io" in the namespace "auth-provider"
 # Controlling Access to Openshift Resources
 
 
+## Authorization Process
+The authorization process is managed by rules, roles, and bindings.
+
+|RBAC Object	| Description |
+|-------------|:-----------|
+|Rule|	Allowed actions for objects or groups of objects|
+|Role	|Sets of rules. Users and groups can be associated with multiple roles.|
+|Binding |	Assignment of users or groups to a role.|
+
+
+RBAC Scope
+Red Hat OpenShift Container Platform (RHOCP) defines two groups of roles and bindings depending on the scope and responsibility of users: cluster roles and local roles.
+
+|Role Level	| Description |
+|-----------|-------------|
+|Cluster Role	| Users or groups with this role level can manage the OpenShift cluster.|
+|Local Role	| Users or groups with this role level can only manage elements at a project level.|
+
+## Managing RBAC Using the CLI
+
+- oc adm policy add-cluster-role-to-user __cluster-role__ __username__
+- oc adm policy remove-cluster-role-from-user __cluster-role__ __username__
+
+## Default Roles
+OpenShift ships with a set of default cluster roles that can be assigned locally or to the entire cluster. You can modify these roles for fine-grained access control to OpenShift resources, but additional steps are required that are outside the scope of this course.
+
+| Default roles	|Description |
+|---------------|------------|
+|admin	| Users with this role can manage all project resources, including granting access to other users to the project.|
+|basic-user |	Users with this role have read access to the project.|
+|cluster-admin	| Users with this role have superuser access to the cluster resources. These users can perform any action on the cluster, and have full control of all projects.|
+|cluster-status	| Users with this role can get cluster status information.|
+| edit	| Users with this role can create, change, and delete common application resources from the project, such as services and deployment configurations. These users cannot act on management resources such as limit ranges and quotas, and cannot manage access permissions to the project.|
+|self-provisioner	| Users with this role can create new projects. This is a cluster role, not a project role.|
+
+- oc adm policy add-role-to-user role-name __username__ -n __project__
+- oc adm policy add-role-to-user basic-user dev -n wordpress
+view	Users with this role can view project resources, but cannot modify project resources.
+
+- oc get clusterrolebinding -o wide
+- oc describe clusterrolebindings self-provisioners
+
+```
+Name:         self-provisioners
+Labels:       <none>
+Annotations:  <none>
+Role:
+  Kind:  ClusterRole
+  Name:  self-provisioner
+Subjects:
+  Kind   Name                        Namespace
+  ----   ----                        ---------
+  Group  system:authenticated:oauth
+  ```
+
+- oc adm policy remove-cluster-role-from-group self-provisioner system:authenticated:oauth
+- oc describe clusterrolebindings self-provisioners
+```
+Error from server (NotFound): clusterrolebindings.rbac.authorization.k8s.io "self-provisioners" not found
+```
+- oc policy add-role-to-user admin leader
+- oc adm groups new dev-group
+- oc adm groups add-users dev-group developer
+- oc adm groups new qa-group
+- oc adm groups add-users qa-group qa-engineer
+- oc get groups
+- oc policy add-role-to-group edit dev-group
+- oc policy add-role-to-group view qa-group
+- oc get rolebindings -o wide
+- oc adm policy add-cluster-role-to-group --rolebinding-name self-provisioners self-provisioner system:authenticated:oauth
+
+## Managing Sensitive Information with Secrets
+
+### Creating a Secret
+- oc create secret generic __secret_name__ --from-literal key1=secret1 --from-literal key2=secret2
+- Update the pod service account to allow the reference to the secret. to allow a secret to be mounted by a pod running under a specific service account
+- oc secrets add --for mount serviceaccount/__serviceaccount-name__ secret/__secret_name__
+
+### Secrets as Pod Environment Variables
+```
+env:
+  - name: MYSQL_ROOT_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: demo-secret
+        key: root_password
+```        
+- oc set env dc/demo --from=secret/__demo-secret__
+### Secrets as Files in a Pod
+- oc set volume dc/demo --add --type=secret --secret-name=demo-secret --mount-path=/app-secrets
+
+- oc create secret generic mysql --from-literal user=myuser --from-literal password=redhat123 --from-literal database=test_secrets --from-literal hostname=mysql 
+- oc new-app --name mysql --docker-image registry.access.redhat.com/rhscl/mysql-57-rhel7:5.7-47
+- oc set env dc/mysql --prefix MYSQL_ --from secret/mysql
+
+
+
 
