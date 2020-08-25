@@ -73,12 +73,14 @@ oc login -u admin -p USER_PASSWD
 oc get nodes
 oc login -u developer -p USER_PASSWD
 oc get nodes
+
 ```Error from server (Forbidden): nodes is forbidden: User "developer" cannot list
 resource "nodes" in API group "" at the cluster scope
 ```
 oc login -u admin -p USER_P
 oc get users
 oc get identity
+
 ```
 NAME                IDP NAME   IDP USER NAME   USER NAME
 myusers:admin       myusers    admin           admin       ...
@@ -87,6 +89,7 @@ myusers:developer   myusers    developer       developer   ...
 oc extract secret/localusers -n openshift-config --to -
 htpasswd -b ~/temp manager USER_PASSWD
 cat ~/temp
+
 ```
 admin:$2y$05$QPuzHdl06IDkJssT.tdkZuSmgjUHV1XeYU4FjxhQrFqKL7hs2ZUl6
 developer:$apr1$0Nzmc1rh$yGtne1k.JX6L5s5wNa2ye.
@@ -96,6 +99,7 @@ oc login -u manager -p USER_PASSWD
 oc new-project auth-provider
 oc login -u developer -p USER_PASSWD
 oc delete project auth-provider
+
 ```
 Error from server (Forbidden): projects.project.openshift.io "auth-provider"
 is forbidden: User "developer" cannot delete resource "projects"
