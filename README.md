@@ -211,7 +211,180 @@ env:
 - oc create secret generic mysql --from-literal user=myuser --from-literal password=redhat123 --from-literal database=test_secrets --from-literal hostname=mysql 
 - oc new-app --name mysql --docker-image registry.access.redhat.com/rhscl/mysql-57-rhel7:5.7-47
 - oc set env dc/mysql --prefix MYSQL_ --from secret/mysql
+```
+spec:
+      containers:
+      - env:
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              key: database
+              name: mysql
+        - name: MYSQL_HOSTNAME
+          valueFrom:
+            secretKeyRef:
+              key: hostname
+              name: mysql
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: mysql
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              key: user
+              name: mysql
+```
+- oc rsh mysql-2-rqp77
+```
+sh-4.2$ mysql -u myuser --password=redhat123 test_secrets -e 'show databases;'
+sh-4.2$ exit
+```
+- oc new-app --name quotes --docker-image quay.io/redhattraining/famous-quotes:1.0
 
+- oc get pods -l app=quotes
+- oc set env dc/quotes --prefix QUOTES_ --from secret/mysql
+
+
+## Controlling Application Permissions with Security Context Constraints(SCCs)
+
+Red Hat OpenShift provides security context constraints (SCCs), a security mechanism that restricts access to resources, but not to operations in OpenShift.
+
+SCCs limit the access from a running pod in OpenShift to the host environment. SCCs control:
+
+- Running privileged containers
+- Requesting extra capabilities to a container
+- Using host directories as volumes
+- Changing the SELinux context of a container
+- Changing the user ID
+
+```
+$ oc get scc
+OpenShift provides eight SCCs:
+
+anyuid
+
+hostaccess
+
+hostmount-anyuid
+
+hostnetwork
+
+node-exporter
+
+nonroot
+
+privileged
+
+restricted
+$  oc describe scc anyuid
+Name:           anyuid
+Priority:         10
+Access:
+  Users:          <none>
+  Groups:         system:cluster-admins
+Settings:
+  Allow Privileged:       false
+  Default Add Capabilities:     <none>
+  Required Drop Capabilities:     MKNOD,SYS_CHROOT
+  Allowed Capabilities:       <none>
+  Allowed Volume Types:       configMap,downwardAPI,emptyDir,persistentVolumeClaim,secret
+  Allow Host Network:       false
+  Allow Host Ports:       false
+  Allow Host PID:       false
+  Allow Host IPC:       false
+  Read Only Root Filesystem:      false
+  Run As User Strategy: RunAsAny
+    UID:          <none>
+    UID Range Min:        <none>
+    UID Range Max:        <none>
+  SELinux Context Strategy: MustRunAs
+    User:         <none>
+    Role:         <none>
+    Type:         <none>
+    Level:          <none>
+  FSGroup Strategy: RunAsAny
+    Ranges:         <none>
+  Supplemental Groups Strategy: RunAsAny
+    Ranges:         <none>
+```
+- oc create serviceaccount __service-account-name__
+- oc adm policy add-scc-to-user scc -z __service-account-name__
+- oc new-project authorization-scc
+- oc new-app --name gitlab --docker-image gitlab/gitlab-ce:8.4-ce.0
+- oc get pods
+- oc logs pod/gitlab-1-lasdf
+```
+...output omitted...
+================================================================================
+Recipe Compile Error in /opt/gitlab/embedded/cookbooks/\
+cache/\cookbooks/gitlab/recipes/default.rb
+================================================================================
+
+Chef::Exceptions::InsufficientPermissions
+-----------------------------------------
+directory[/etc/gitlab] (gitlab::default line 26) had an error: \
+Chef::Exceptions::InsufficientPermissions: Cannot create directory[/etc/gitlab] at \
+/etc/gitlab due to insufficient permissions
+...output omitted...
+```
+- oc create sa gitlab-sa
+- oc login -u admin -p XXXXXX
+- oc adm policy add-scc-to-user anyuid -z gitlab-sa
+- oc login -u developer -p XXX
+- oc set serviceaccount deploymentconfig gitlab gitlab-sa
+- oc get pods
+- oc expose service gitlab --port 80
+- oc get route gitlab
+
+## view Roles and Users for a project
+```
+$ oc get rolebindings
+NAME                    ROLE                    USERS     GROUPS                                 SERVICE ACCOUNTS   SUBJECTS
+system:image-pullers    /system:image-puller              system:serviceaccounts:asdfasdf4asdf
+admin                   /admin                  jsmith
+system:deployers        /system:deployer                                                         deployer
+system:image-builders   /system:image-builder   
+```
+## view Roles and Users for the Cluster
+```
+$ oc get clusterrolebindings
+NAME                                            ROLE                                       USERS           GROUPS                                         SERVICE ACCOUNTS                                   SUBJECTS
+system:job-controller                           /system:job-controller                                                                                    openshift-infra/job-controller
+system:build-controller                         /system:build-controller                                                                                  openshift-infra/build-controller
+system:node-admins                              /system:node-admin                         system:master   system:node-admins
+registry-registry-role                          /system:registry                                                                                          default/registry
+system:pv-provisioner-controller                /system:pv-provisioner-controller                                                                         openshift-infra/pv-provisioner-controller
+basic-users                                     /basic-user                                                system:authenticated
+system:namespace-controller                     /system:namespace-controller                                                                              openshift-infra/namespace-controller
+system:discovery-binding                        /system:discovery                                          system:authenticated, system:unauthenticated
+system:build-strategy-custom-binding            /system:build-strategy-custom                              system:authenticated
+cluster-status-binding                          /cluster-status                                            system:authenticated, system:unauthenticated
+system:webhooks                                 /system:webhook                                            system:authenticated, system:unauthenticated
+system:gc-controller                            /system:gc-controller                                                                                     openshift-infra/gc-controller
+cluster-readers                                 /cluster-reader                                            system:cluster-readers
+system:pv-recycler-controller                   /system:pv-recycler-controller                                                                            openshift-infra/pv-recycler-controller
+system:daemonset-controller                     /system:daemonset-controller                                                                              openshift-infra/daemonset-controller
+cluster-admins                                  /cluster-admin                             system:admin    system:cluster-admins
+system:hpa-controller                           /system:hpa-controller                                                                                    openshift-infra/hpa-controller
+system:build-strategy-source-binding            /system:build-strategy-source                              system:authenticated
+system:replication-controller                   /system:replication-controller                                                                            openshift-infra/replication-controller
+system:sdn-readers                              /system:sdn-reader                                         system:nodes
+system:build-strategy-docker-binding            /system:build-strategy-docker                              system:authenticated
+system:routers                                  /system:router                                             system:routers
+system:oauth-token-deleters                     /system:oauth-token-deleter                                system:authenticated, system:unauthenticated
+system:node-proxiers                            /system:node-proxier                                       system:nodes
+system:nodes                                    /system:node                                               system:nodes
+self-provisioners                               /self-provisioner                                          system:authenticated:oauth
+system:service-serving-cert-controller          /system:service-serving-cert-controller                                                                   openshift-infra/service-serving-cert-controller
+system:registrys                                /system:registry                                           system:registries
+system:pv-binder-controller                     /system:pv-binder-controller                                                                              openshift-infra/pv-binder-controller
+system:build-strategy-jenkinspipeline-binding   /system:build-strategy-jenkinspipeline                     system:authenticated
+system:deployment-controller                    /system:deployment-controller                                                                             openshift-infra/deployment-controller
+system:masters                                  /system:master                                             system:masters
+system:service-load-balancer-controller         /system:service-load-balancer-controller    
+```
 
 
 
