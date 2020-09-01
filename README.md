@@ -387,4 +387,29 @@ system:service-load-balancer-controller         /system:service-load-balancer-co
 ```
 
 
+# Chapter 5. Configuring OpenShift Networking Components
+
+## OpenShift Software-defined Networking
+- oc describe dns.operator/default
+- oc get  Network.config.openshift.io cluster 
+
+## Controlling Cluster Network Ingress
+
+### Describing Methods for Managing Ingress Traffic
+- Ingress (resource). The Ingress Operator manages this resource. Ingresses accept external requests and proxy them based on the route. You can only route HTTP, HTTPS and server name identification (SNI), and TLS with SNI.
+
+- External load balancer (service type). This resources instructs OpenShift to spin up a load balancer in a cloud environment. A load balancer instructs OpenShift to interact with the cloud provider in which the cluster is running to provision a load balancer.
+
+- Service external IP (service type). This method instructs OpenShift to set NAT rules to redirect traffic from one of the cluster IPs to the container.
+
+- NodePort (service type). With this method, OpenShift exposes a service on a static port on the node IP address. You must ensure that the external IP addresses are properly routed to the nodes.
+
+### Describing Route Options and Route Types
+#### OpenShift Secure Routes
+- Edge
+- Pass-through
+- Re-encryption
+-  oc create route edge --service api-frontend --api.apps.acme.com --key api.key --cert api.crt
+#### Creating Insecure Routes
+-  oc expose service api-frontend
 
