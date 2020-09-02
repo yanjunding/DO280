@@ -418,3 +418,16 @@ system:service-load-balancer-controller         /system:service-load-balancer-co
 - If you have a TLS-encrypted protocol other than HTTPS. For example, for TLS with the SNI header, use an Ingress Controller.
 - Otherwise, use a Load Balancer, an External IP, or a *NodePort*.
 
+### create CSR and Key
+
+#### generates an RSA private key
+
+- openssl genrsa -out `training.key` 2048
+
+#### generate certificate signing request CSR
+
+- openssl req -new -key `training.key` -out training.csr
+
+#### generate signed certificate
+
+- openssl x509 -req -in `training.csr` -passin file:passphrase.txt -CA training-CA.pem -CAkey 
