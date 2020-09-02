@@ -413,3 +413,8 @@ system:service-load-balancer-controller         /system:service-load-balancer-co
 #### Creating Insecure Routes
 -  oc expose service api-frontend
 
+### extra notes 
+- If you have HTTP/HTTPS, use an Ingress Controller.
+- If you have a TLS-encrypted protocol other than HTTPS. For example, for TLS with the SNI header, use an Ingress Controller.
+- Otherwise, use a Load Balancer, an External IP, or a *NodePort*.
+
